@@ -13,7 +13,7 @@ CRGB leds[NUM_LEDS];
 decode_results results; // create a results object of the decode_results class
 
 
-int BRIGHTNESS = 30;  //max 94
+int brightness = 30;  //max 94
 
 unsigned long key_value = 0; // variable to store the pressed key value
 
@@ -74,7 +74,7 @@ delay(4000); // To be able to connect Serial monitor after reset or power up and
 
   //led setup code:
   FastLED.addLeds<LED_TYPE,LED_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setBrightness(brightness);
 }
 
 CRGB mostRecentColor = CRGB::Black;
@@ -171,7 +171,17 @@ void loop() {
       case(0):
         //repeated button
         break;
-      default:
+      case(92):
+        brightness += brightness+5 > 93 ? 0 : 5;
+        FastLED.setBrightness(brightness);
+        Serial.print("Setting brightness: ");
+        Serial.println(brightness);
+        break;
+      case(93):
+        brightness -= brightness-5 < 0 ? 0 : 5;
+        FastLED.setBrightness(brightness);
+        Serial.print("Setting brightness: ");
+        Serial.println(brightness);
         break;
 
       case(4): // jump 3 (
