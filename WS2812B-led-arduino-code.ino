@@ -7,15 +7,23 @@
 #define LED_PIN 10
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
-#define NUM_LEDS 120
 
-CRGB leds[NUM_LEDS];
+#define LED_NUM 266
+#define END_OFFSET 45
+#define START_POS 25
+
+#define NUM_LEDS (LED_NUM- END_OFFSET)
+
+
+
+CRGB leds[LED_NUM];
 decode_results results; // create a results object of the decode_results class
 
 
-int brightness = 30;  //max 94
+int brightness = 60;  //max 94
 
 unsigned long key_value = 0; // variable to store the pressed key value
+unsigned long faderLoops = 0;
 
 #include "a_rainbow.h"
 
@@ -73,25 +81,45 @@ delay(4000); // To be able to connect Serial monitor after reset or power up and
      Timer1.start();
 
   //led setup code:
-  FastLED.addLeds<LED_TYPE,LED_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.addLeds<LED_TYPE,LED_PIN,COLOR_ORDER>(leds, LED_NUM).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(brightness);
+
+  musicLEDSsetup();
 }
 
-CRGB mostRecentColor = CRGB::Black;
+CRGB mostRecentColor = CRGB::White;
 
+
+void turnOff() {
+  for (int i = 0; i < LED_NUM; i++) {
+      leds[i] = CRGB::Black;
+  }  
+}
 void setAll(CRGB color) {
   mostRecentColor = color;
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (int i = START_POS; i < NUM_LEDS; i++) {
       leds[i] = color;
   }  
 }
 
 
+//#define __REMOTE_ONE__
+#define __REMOTE_TWO__
+
+
+
+
+
 //MODE:
 #define MODE_REMOTE 0
 #define MODE_RAINBOW 1
+#define MODE_MUSIC 2
+#define MODE_OFF 3
+#define MODE_FADE 4
 
 int mode = MODE_REMOTE;
+
+
 void loop() {
 
   
@@ -103,8 +131,15 @@ void loop() {
 
    
     mode = MODE_REMOTE; // let the remote set color
+
+    //make sure START_POS is honored (*COUGH* *COUGH* Rainbow)
+    for (int i = 0; i < START_POS; i++) {
+      leds[i] = CRGB::Black;
+    }  
     
     switch(analog1.command) {
+
+      #ifdef __REMOTE_ONE__  // This code is for Emily's remote
       case(88): //Red
         setAll(CRGB::Red);
         break;
@@ -187,20 +222,105 @@ void loop() {
       case(4): // jump 3 (
         mode = MODE_RAINBOW;
         break;
+
+       #endif // end Emily's remote config
+
+       #ifdef __REMOTE_TWO__ //Alec's Remote
+
+       case(3): //off button
+        turnOff();
+        mode = MODE_OFF;
+        break;
+
+       case(2): // on button
+        setAll(mostRecentColor);
+        break;
+
+       case(4): //red
+        setAll(CRGB::Red);
+        break;
+
+       case(5):
+        setAll(CRGB::Green);
+        break;
+
+       case(14):
+        mode = MODE_RAINBOW;
+        break;
+
+       case(15):
+        mode = MODE_FADE;
+        break;
+
+       case(16):
+        resetNormalizationData();
+        mode = MODE_MUSIC;
+        break;
+
+       case(6): //blue
+        setAll(CRGB::Blue);
+        break;
+
+       case(7): //white
+        setAll(CRGB::White);
+       break;
+
+       case(8): //orange
+        setAll(CRGB::Orange);
+        break;
+        
+       case(9): //yellow
+        setAll(CRGB::Yellow);
+        break;
+
+       case(10): //cyan
+        setAll(CRGB::Cyan);
+        break;
+
+       case(11): //magenta
+        setAll(CRGB::Magenta);
+        break;
+       
+
+       case(0):
+        brightness += brightness+5 > 93 ? 0 : 5;
+        FastLED.setBrightness(brightness);
+        Serial.print("Setting brightness: ");
+        Serial.println(brightness);
+        break;
+      case(1):
+        brightness -= brightness-5 < 0 ? 0 : 5;
+        FastLED.setBrightness(brightness);
+        Serial.print("Setting brightness: ");
+        Serial.println(brightness);
+        break;
+
+       #endif // end Alec's remote config
       
     }
+
+    FastLED.setBrightness(brightness);
     
     FastLED.show();
 
     
+  }else if(mode == MODE_OFF) {
+    //do nothing
+    return;
   }
 
 
 
+  
+  
   if (mode == MODE_RAINBOW) {
-    runRainbow(); 
-
-    
+    runRainbow();
+  }else if (mode == MODE_MUSIC) {
+    runMusicLeds();
+  }else if (mode == MODE_FADE) {
+    faderLoops++;
+    if (faderLoops > 100000000000) faderLoops = 0;
+    setAll(getColorShift(faderLoops));
   }
 
   //the remote mode will have already called this
