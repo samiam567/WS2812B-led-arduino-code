@@ -116,6 +116,7 @@ void setAll(CRGB color) {
 #define MODE_MUSIC 2
 #define MODE_OFF 3
 #define MODE_FADE 4
+#define MODE_WAVE 5
 
 int mode = MODE_REMOTE;
 
@@ -257,6 +258,9 @@ void loop() {
         mode = MODE_MUSIC;
         break;
 
+       case(12): //jump 3
+        mode = MODE_WAVE;
+        break;
        case(6): //blue
         setAll(CRGB::Blue);
         break;
@@ -309,8 +313,9 @@ void loop() {
     return;
   }
 
-
-
+   //for time-dependent color shifts
+   faderLoops++;
+   if (faderLoops > 25000) faderLoops = 0;
   
   
   if (mode == MODE_RAINBOW) {
@@ -318,9 +323,16 @@ void loop() {
   }else if (mode == MODE_MUSIC) {
     runMusicLeds();
   }else if (mode == MODE_FADE) {
-    faderLoops++;
-    if (faderLoops > 100000000000) faderLoops = 0;
+    
     setAll(getColorShift(faderLoops));
+  }else if (mode == MODE_WAVE) {
+    const float k = 0.005;
+    const float w = 0.1f;
+    const float A = 2000;
+    for (int i = START_POS; i < NUM_LEDS; i++) {
+      leds[i] = getColorShift((sin(k*((float)i)-w*((float)faderLoops)) + 1.0)*A/2 );
+      if (i == 100) Serial.println((sin(k*((float)i)-w*((double)faderLoops)) + 1.0)*A/2 );
+    }
   }
 
   //the remote mode will have already called this

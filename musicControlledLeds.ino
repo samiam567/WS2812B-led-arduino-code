@@ -195,7 +195,51 @@ void resetNormalizationData() {
   normalizationData = newFreqData;
 }
 
-CRGB getColorShift(long position) {
+CRGB getColorShift(double position, int brightnessI) {
+  float pos = 0;
+  if (position > 10000) {
+    (((long)position) % 10000);
+  }else{
+    pos = position;
+  }
+    
+  float brightness = brightnessI > 255 ? 255 : ((float) brightnessI);
+
+  int r = ( (int)  brightness/2 * ( sin(pos/200) + 1) );
+  int g = ( (int)  brightness/2 * ( sin(pos/170 + 0.27) + 1.0) );
+  int b = ( (int)  brightness/2 * ( sin(pos/300 + 3.2) + 1.0) );
+/*
+  Serial.print("R: ");
+  Serial.print(r);
+  Serial.print(" , G: ");
+  Serial.print(g);
+  Serial.print(" , B: ");
+  Serial.println(b);
+  */
+  return CRGB(r,g,b);
+}
+
+CRGB getColorShift1(long position, int brightness) {
+    if (brightness > 255) brightness = 255;
+    
+    int colorStep = position % (2*brightness);
+    if (colorStep > brightness) colorStep = (2*brightness)-colorStep;
+
+    int greenStep = ((int) ( ((float) position) * 1.3f)) % (2*brightness);
+    if (greenStep > brightness) greenStep = (2*brightness)-greenStep;
+    
+    int r = colorStep;  // Redness starts at zero and goes up to full
+    int b = brightness-colorStep;  // Blue starts at full and goes down to zero
+    int g = greenStep;              // No green needed to go from blue to red
+
+    return CRGB(r,g,b);
+}
+
+CRGB getColorShift(double pos) {
+    return getColorShift(pos,255);
+}
+
+CRGB getColorShiftOld(int position) {
     int colorStep = position % 510;
     if (colorStep > 255) colorStep = 510-colorStep;
 
@@ -208,6 +252,7 @@ CRGB getColorShift(long position) {
 
     return CRGB(r,g,b);
 }
+
 
 
 void checkModeSwitch() {
@@ -277,20 +322,28 @@ void runMusicLeds() {
 
 
   
-  
+   if (colorCycleIndx > 25000) colorCycleIndx = 0;
     // change color with Vrms
     if ((Vrms > 0.5)) {
-      if (largeVrms == 1 || largeVrms == 2) {
-        colorCycleIndx += 200*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
-      }else{
-        colorCycleIndx += 20*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+      colorCycleIndx += 20*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+
+      if (Vrms > 0.75){
+        colorCycleIndx += 30*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+      }else{      
+        largeVrms++;
       }
-      largeVrms++;
       
     }else{
+      if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
+        colorCycleIndx += 50*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+      }else{
+        colorCycleIndx += 15*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+      }
+  
       largeVrms = 0;
-      colorCycleIndx += 2*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+      
     }
+
   
 
  
