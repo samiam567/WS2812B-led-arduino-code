@@ -7,7 +7,7 @@ FASTLED_USING_NAMESPACE
 
 
 #define DATA_PIN 10
-#define AUDIO_PORT 5
+#define AUDIO_PORT 4
 #define MICROPHONE_PORT 4
 #define SAMPLE_SIZE 100 //400 //the number of audio samples to take
 #define LOOPS_TO_MES_FREQ_OVER 3;
@@ -20,7 +20,7 @@ FASTLED_USING_NAMESPACE
 
 struct NormalizationData {
   float lastNormalizedMeasurement = 0;
-  float minMeasurement = 0;
+  float minMeasurement = 10000;
   float maxMeasurement = 0;
   float averageMeasurement = 0;
   int totalMesurements = 0;
@@ -125,15 +125,14 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
   double sample = 0;
   for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
     sample = analogRead(input_port);
- 
+  
     if (sample > 300) {
-    
-    if (belowTrigger) frequency++;  //rising edge triggering
-      belowTrigger = false;
+       if (belowTrigger) frequency++;  //rising edge triggering
+       belowTrigger = false;
     }else {
-      belowTrigger = true;
+       belowTrigger = true;
     }
-
+    
     if (! sample == 0) {
       Vrms += sample*sample;
     }else {
@@ -142,7 +141,7 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
 
     delay(SAMPLE_DELAY);
   }
-
+  
   Vrms /= numNonZero;
  
   freqVrms[0] = frequency;
@@ -158,8 +157,8 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
   data.averageMeasurement = (  data.averageMeasurement*data.totalMesurements + measurement)/(++data.totalMesurements);
 
   // reset after a while
-  data.maxMeasurement -= abs(data.maxMeasurement)/100000;
-  data.minMeasurement += abs(data.minMeasurement)/100000;
+  data.maxMeasurement -= abs(data.maxMeasurement)/1000;
+  data.minMeasurement += abs(data.minMeasurement)/1000;
   
   
 
@@ -171,7 +170,7 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
   if (measurement > data.maxMeasurement && measurement < 1000000) data.maxMeasurement = measurement;
   
 
-  if (measurement < data.minMeasurement && measurement != 0) data.minMeasurement = measurement;
+  if (measurement < data.minMeasurement ) data.minMeasurement = measurement;
   
   return data;
 
@@ -302,7 +301,7 @@ void runMusicLeds(bool useMicrophone) {
    
    
    
-
+    Serial.println(Vrms);
 
    
     if (colorCycleIndx > 255 || colorCycleIndx < 0) colorCycleIndx = 0;
@@ -326,10 +325,14 @@ void runMusicLeds(bool useMicrophone) {
       
     }
 
-  Serial.print(Vrms);
-  Serial.print(",");
-  Serial.println(colorCycleIndx);
- 
+
+
+  if (loops % 3 == 0) {
+    FastLED.setBrightness((1.0+Vrms)/2.0*brightness);
+  }else if (loops > 100000){
+      loops = 0;
+  }
+  
   highStateColor = getColorShift(colorCycleIndx);
   lowStateColor = getColorShift(colorCycleIndx +700);
   loops++;
@@ -344,6 +347,8 @@ void runMusicLeds(bool useMicrophone) {
   
   frequencyNormalizationData.totalMesurements = LOOPS_TO_MES_FREQ_OVER;
 
+  
+  
   //if freq is zero don't change normalization
   if (frequency != 0) {
     frequencyNormalizationData = normalize(frequency*frequency,frequencyNormalizationData);
@@ -422,10 +427,6 @@ void runMusicLeds(bool useMicrophone) {
     leds[i] = CRGB::Black;
   }
 
-  FastLED.setBrightness((1.0+Vrms)/2.0*brightness);
-  if (loops % 2 == 1) {
-      
-  }else if (loops > 100000){
-      loops = 0;
-  }
+  
+ 
 }
