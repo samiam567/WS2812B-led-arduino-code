@@ -1,7 +1,7 @@
 #include <IRremote.h>
 #include <FastLED.h>
 #include "a_IrRemoteController.h"
-
+#include "musicLeds.h"
 
 #define IR_PIN 13
 #define LED_PIN 10
@@ -119,7 +119,9 @@ void setAll(CRGB color) {
 #define MODE_WAVE 5
 
 int mode = MODE_REMOTE;
+int music_mode = 2;
 
+bool useMicrophone = false;
 
 void loop() {
 
@@ -130,7 +132,7 @@ void loop() {
     Serial.println("RECIEVING SIGNAL: ");
     Serial.println(analog1.command, DEC);
 
-   
+    int prevMode = mode;
     mode = MODE_REMOTE; // let the remote set color
 
     //make sure START_POS is honored (*COUGH* *COUGH* Rainbow)
@@ -254,7 +256,18 @@ void loop() {
         break;
 
        case(16):
+        mode = MODE_MUSIC;
+        break;
+
+       case(17):
         resetNormalizationData();
+        break;
+
+       case(18):
+        music_mode++;
+        if (music_mode > MAX_MUSIC_MODE) {
+          music_mode = 0;
+        }
         mode = MODE_MUSIC;
         break;
 
@@ -284,7 +297,6 @@ void loop() {
        case(11): //magenta
         setAll(CRGB::Magenta);
         break;
-       
 
        case(0):
         brightness += brightness+5 > 93 ? 0 : 5;
@@ -298,9 +310,10 @@ void loop() {
         Serial.print("Setting brightness: ");
         Serial.println(brightness);
         break;
-
+  
        #endif // end Alec's remote config
-      
+
+     
     }
 
     FastLED.setBrightness(brightness);
@@ -321,17 +334,17 @@ void loop() {
   if (mode == MODE_RAINBOW) {
     runRainbow();
   }else if (mode == MODE_MUSIC) {
-    runMusicLeds();
+    runMusicLeds(useMicrophone);
   }else if (mode == MODE_FADE) {
-    
     setAll(getColorShift(faderLoops));
   }else if (mode == MODE_WAVE) {
-    const float k = 0.005;
-    const float w = 0.1f;
+    const float k = 0.01;
+    const float w = 0.02f;
     const float A = 2000;
-    for (int i = START_POS; i < NUM_LEDS; i++) {
-      leds[i] = getColorShift((sin(k*((float)i)-w*((float)faderLoops)) + 1.0)*A/2 );
-      if (i == 100) Serial.println((sin(k*((float)i)-w*((double)faderLoops)) + 1.0)*A/2 );
+    double fadeLoops = faderLoops;
+    for (float i = START_POS; i < NUM_LEDS; i++) {
+      leds[(int) i] = getColorShift( ( sin(k*i-w*fadeLoops) + 1.0)*A/2.0 );
+      if (i == 100) Serial.println( ( sin(k*i-w*fadeLoops) + 1.0)*A/2.0 );
     }
   }
 
@@ -339,7 +352,7 @@ void loop() {
   if (mode != MODE_REMOTE) {
     FastLED.show();
   }
- 
+  
      
   
 }

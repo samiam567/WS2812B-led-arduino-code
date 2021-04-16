@@ -2,24 +2,17 @@
 
 FASTLED_USING_NAMESPACE
 
-// 0: OFF
-// 1: Frequencyd-> bars coming from either side, color change with thresh vrms
-// 2: Frequency -> bar starting from center going out, color change with thresh vrms
-// 3: color change with Vrms
-// 4: rainbow
-// 5: solid color
-int MODE = 2;
-// i love you alec
 
-#define MAX_MODE 5
 
 
 
 #define DATA_PIN 10
 #define AUDIO_PORT 5
+#define MICROPHONE_PORT 4
 #define SAMPLE_SIZE 100 //400 //the number of audio samples to take
+#define LOOPS_TO_MES_FREQ_OVER 3;
 #define SAMPLE_DELAY 0//0 // the delay between audio samples
-#define MODE_SWITCH_BUTTON_PIN 8
+
 
 
 
@@ -27,16 +20,18 @@ int MODE = 2;
 
 struct NormalizationData {
   float lastNormalizedMeasurement = 0;
-  float minMeasurement = 10000;
-  float maxMeasurement = -1000;
+  float minMeasurement = 0;
+  float maxMeasurement = 0;
   float averageMeasurement = 0;
-  int totalMeasurements = 0;
+  int totalMesurements = 0;
   
 };
 
-struct NormalizationData normalizationData;
+struct NormalizationData frequencyNormalizationData;
 
 struct NormalizationData VrmsNormalizationData;
+
+struct NormalizationData averageFrequencyNormalizationData;
 
 int prevLEDNum = 0;
 
@@ -61,8 +56,6 @@ void musicLEDSsetup() {
 
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
-
-  pinMode(MODE_SWITCH_BUTTON_PIN, INPUT);
 
   pinMode(AUDIO_PORT,INPUT);
 }
@@ -104,12 +97,8 @@ float getSignalFrequency(int input_port, float triggerLevel, int sample_size) {
     double sample = analogRead(input_port);
 
     avgSample = (20*avgSample + sample)/21;
-
-    //Vrms += sample > 0 ? sample*sample : Vrms/(sampleNum+1);
     
     if (sample > triggerLevel) {
-
-      
 
       if (belowTrigger) frequency += 1;  //rising edge triggering
 
@@ -132,13 +121,14 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
 
   double Vrms = 0;
   float numNonZero = sample_size;
-  
-  for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
-    double sample = analogRead(input_port);
-    //Vrms += sample > 0 ? sample*sample : Vrms/(sampleNum+1);
 
-    if (sample > triggerLevel) {
-      if (belowTrigger) frequency++;  //rising edge triggering
+  double sample = 0;
+  for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
+    sample = analogRead(input_port);
+ 
+    if (sample > 300) {
+    
+    if (belowTrigger) frequency++;  //rising edge triggering
       belowTrigger = false;
     }else {
       belowTrigger = true;
@@ -154,7 +144,7 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
   }
 
   Vrms /= numNonZero;
-
+ 
   freqVrms[0] = frequency;
   freqVrms[1] = Vrms;
   return freqVrms;
@@ -165,11 +155,11 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
 struct NormalizationData normalize(float measurement,struct NormalizationData data) {
   
   measurement = measurement > 1 ? sqrt(measurement) : measurement*measurement;
-  data.averageMeasurement = (  data.averageMeasurement*data.totalMeasurements + measurement)/(++data.totalMeasurements);
+  data.averageMeasurement = (  data.averageMeasurement*data.totalMesurements + measurement)/(++data.totalMesurements);
 
   // reset after a while
-  data.maxMeasurement -= 0.0001;
-  data.minMeasurement += 0.0001;
+  data.maxMeasurement -= abs(data.maxMeasurement)/100000;
+  data.minMeasurement += abs(data.minMeasurement)/100000;
   
   
 
@@ -178,7 +168,7 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
 
   data.lastNormalizedMeasurement = data.lastNormalizedMeasurement < 0 ? 0 : data.lastNormalizedMeasurement > 1 ? 1 : data.lastNormalizedMeasurement;
   
-  if (measurement > data.maxMeasurement) data.maxMeasurement = measurement;
+  if (measurement > data.maxMeasurement && measurement < 1000000) data.maxMeasurement = measurement;
   
 
   if (measurement < data.minMeasurement && measurement != 0) data.minMeasurement = measurement;
@@ -191,11 +181,18 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
 void resetNormalizationData() {
   struct NormalizationData newVrmsData;
   struct NormalizationData newFreqData;
+  struct NormalizationData newAverageFrequencyNormalizationData;
   VrmsNormalizationData = newVrmsData;
-  normalizationData = newFreqData;
+  frequencyNormalizationData = newFreqData;
+  averageFrequencyNormalizationData = newAverageFrequencyNormalizationData;
 }
 
-CRGB getColorShift(double position, int brightnessI) {
+CRGB getColorShift(double pos, int brightness) {
+  if (brightness > 255) brightness = 255;
+  return CHSV(pos,255,brightness);
+}
+
+CRGB getColorShift2(double position, int brightnessI) {
   float pos = 0;
   if (position > 10000) {
     (((long)position) % 10000);
@@ -208,14 +205,7 @@ CRGB getColorShift(double position, int brightnessI) {
   int r = ( (int)  brightness/2 * ( sin(pos/200) + 1) );
   int g = ( (int)  brightness/2 * ( sin(pos/170 + 0.27) + 1.0) );
   int b = ( (int)  brightness/2 * ( sin(pos/300 + 3.2) + 1.0) );
-/*
-  Serial.print("R: ");
-  Serial.print(r);
-  Serial.print(" , G: ");
-  Serial.print(g);
-  Serial.print(" , B: ");
-  Serial.println(b);
-  */
+  
   return CRGB(r,g,b);
 }
 
@@ -254,7 +244,7 @@ CRGB getColorShiftOld(int position) {
 }
 
 
-
+/*
 void checkModeSwitch() {
   //Mode switching
 
@@ -268,34 +258,29 @@ void checkModeSwitch() {
   }else{
     modeSwitchButtonPressed = false;
   }
-}
+}*/
 
 
 
-void runMusicLeds() {
+void runMusicLeds(bool useMicrophone) {
 
   //get signal data
   
-  float* freqAndRms = getSignalFrequencyAndRms(AUDIO_PORT,avgSample,SAMPLE_SIZE);
+  float* freqAndRms = getSignalFrequencyAndRms(useMicrophone ? MICROPHONE_PORT : AUDIO_PORT,avgSample,SAMPLE_SIZE);
 
-  float frequency = freqAndRms[0];
+  float frequency = freqAndRms[0];  
   float Vrms = freqAndRms[1];
-
-
 
 
   delete[] freqAndRms;
 
-  
-
-
+ 
   // if there is no music playing switch to rainbow
 
     if ( Vrms < 15000 ){
       loopsWithoutAudioDetected+=10;
     }else{
       if (loopsWithoutAudioDetected > 100000/SAMPLE_SIZE) {
-        Serial.println("Reset normalization for new song");
         resetNormalizationData();
       }
 
@@ -310,52 +295,64 @@ void runMusicLeds() {
   VrmsNormalizationData = normalize(Vrms,VrmsNormalizationData);
   Vrms = VrmsNormalizationData.lastNormalizedMeasurement;
 
-
+   
 
   //set brightness with Vrms
   
    
-   if (loops % 2 == 1) {
-      FastLED.setBrightness(brightness*(0.5+sqrt(Vrms))/2);
-   }
-   loops++;
+   
+   
 
 
-  
-   if (colorCycleIndx > 25000) colorCycleIndx = 0;
+   
+    if (colorCycleIndx > 255 || colorCycleIndx < 0) colorCycleIndx = 0;
     // change color with Vrms
     if ((Vrms > 0.5)) {
-      colorCycleIndx += 20*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
-
+      colorCycleIndx += 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
       if (Vrms > 0.75){
-        colorCycleIndx += 30*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+        colorCycleIndx += 30*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
       }else{      
         largeVrms++;
       }
       
     }else{
       if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
-        colorCycleIndx += 50*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+        colorCycleIndx += 50*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
       }else{
-        colorCycleIndx += 15*pow(1/(1-Vrms),3)/SAMPLE_SIZE;
+        colorCycleIndx += 5*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
       }
   
       largeVrms = 0;
       
     }
 
-  
-
+  Serial.print(Vrms);
+  Serial.print(",");
+  Serial.println(colorCycleIndx);
  
   highStateColor = getColorShift(colorCycleIndx);
-  lowStateColor = CRGB(0,50,50);//getColorShift(loops + 400);
+  lowStateColor = getColorShift(colorCycleIndx +700);
+  loops++;
 
-
-
-  //show bars with frequency
   
-  normalizationData = normalize(frequency,normalizationData);
-  float measurement = normalizationData.lastNormalizedMeasurement;
+
+   
+  //show bars with frequency
+
+
+ 
+  
+  frequencyNormalizationData.totalMesurements = LOOPS_TO_MES_FREQ_OVER;
+
+  //if freq is zero don't change normalization
+  if (frequency != 0) {
+    frequencyNormalizationData = normalize(frequency*frequency,frequencyNormalizationData);
+  }
+
+ 
+  averageFrequencyNormalizationData = normalize(frequencyNormalizationData.averageMeasurement,averageFrequencyNormalizationData);
+
+  float measurement = averageFrequencyNormalizationData.lastNormalizedMeasurement;
 
   int ledNum = ((int) (measurement * NUM_LEDS));
 
@@ -367,10 +364,10 @@ void runMusicLeds() {
 
  
   
-  if (MODE == 0) {
+  if (music_mode == 0) {
     setAll(CRGB::Black);
    
-  }else if (MODE == 1) {
+  }else if (music_mode == 1) {
     
     
     if (ledNum > 1) {
@@ -389,7 +386,7 @@ void runMusicLeds() {
         leds[i] = lowStateColor;
       }
     }
-  }else if (MODE == 2) {
+  }else if (music_mode == 2) {
     
     ledNum = ((int) (sqrt(measurement/2) * NUM_LEDS));
     
@@ -409,12 +406,10 @@ void runMusicLeds() {
         leds[i] = lowStateColor;
       }
     }
-  }else if (MODE == 3) {
+  }else if (music_mode == 3) {
     for (int i = 0; i < NUM_LEDS; i++) {
       leds[i] = highStateColor;
     }
-  }else if (MODE == 5) {
-    setAll(CRGB(102,255,50));
   }else{ //mode not one of the options  
     setAll(CRGB::Red);
   }
@@ -423,12 +418,14 @@ void runMusicLeds() {
 
 
 
-  checkModeSwitch();
-
-
-
   for (int i = 0; i < START_POS; i++) {
     leds[i] = CRGB::Black;
   }
-  
+
+  FastLED.setBrightness((1.0+Vrms)/2.0*brightness);
+  if (loops % 2 == 1) {
+      
+  }else if (loops > 100000){
+      loops = 0;
+  }
 }
