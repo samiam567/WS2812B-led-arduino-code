@@ -271,8 +271,6 @@ void runMusicLeds(bool useMicrophone) {
   float Vrms = freqAndRms[1];
 
 
-  delete[] freqAndRms;
-
  
   // if there is no music playing switch to rainbow
 
