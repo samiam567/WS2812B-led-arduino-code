@@ -10,9 +10,9 @@ FASTLED_USING_NAMESPACE
 #define AUDIO_PORT 4
 #define MICROPHONE_PORT 4
 #define SAMPLE_SIZE 100 //400 //the number of audio samples to take
-#define LOOPS_TO_MES_FREQ_OVER 3;
+#define LOOPS_TO_MES_FREQ_OVER 4;
 #define SAMPLE_DELAY 0//0 // the delay between audio samples
-
+#define NUM_LEDS_TILL_REPEAT 50
 
 
 
@@ -157,8 +157,8 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
   data.averageMeasurement = (  data.averageMeasurement*data.totalMesurements + measurement)/(++data.totalMesurements);
 
   // reset after a while
-  data.maxMeasurement -= abs(data.maxMeasurement)/1000;
-  data.minMeasurement += abs(data.minMeasurement)/1000;
+  data.maxMeasurement -= abs(data.maxMeasurement)/10000;
+  data.minMeasurement += abs(data.minMeasurement)/10000;
   
   
 
@@ -242,22 +242,25 @@ CRGB getColorShiftOld(int position) {
     return CRGB(r,g,b);
 }
 
+int factorial(int x) {
+  int result = x;
 
-/*
-void checkModeSwitch() {
   //Mode switching
-
-  if (digitalRead(MODE_SWITCH_BUTTON_PIN) == HIGH) {
-    if (! modeSwitchButtonPressed) {
-      MODE = MODE >= MAX_MODE ? 0 : MODE + 1;
-      
-      delay(50);
+  if (x >= 0) {
+    x--;
+    while (x > 1) {
+      result *= x;
+      x--;
     }
-    modeSwitchButtonPressed = true;
   }else{
-    modeSwitchButtonPressed = false;
+    x++;
+    while (x != 0) {
+      result *= x;
+      x++;
+    }
   }
-}*/
+}
+
 
 
 
@@ -301,7 +304,7 @@ void runMusicLeds(bool useMicrophone) {
    
    
    
-    Serial.println(Vrms);
+  
 
    
     if (colorCycleIndx > 255 || colorCycleIndx < 0) colorCycleIndx = 0;
@@ -318,7 +321,7 @@ void runMusicLeds(bool useMicrophone) {
       if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
         colorCycleIndx += 50*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
       }else{
-        colorCycleIndx += 5*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
+        colorCycleIndx += 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
       }
   
       largeVrms = 0;
@@ -342,12 +345,9 @@ void runMusicLeds(bool useMicrophone) {
    
   //show bars with frequency
 
-
- 
   
   frequencyNormalizationData.totalMesurements = LOOPS_TO_MES_FREQ_OVER;
 
-  
   
   //if freq is zero don't change normalization
   if (frequency != 0) {
@@ -373,44 +373,29 @@ void runMusicLeds(bool useMicrophone) {
     setAll(CRGB::Black);
    
   }else if (music_mode == 1) {
-    
-    
-    if (ledNum > 1) {
-      int i = 1;
-      for (; i < ledNum/2 && i < NUM_LEDS/2 ; i++) {
-        leds[i] = highStateColor;
-        leds[NUM_LEDS-i] = highStateColor;
-      }
-   
-      for (; i < NUM_LEDS/2; i++) {
-        leds[i] = lowStateColor;
-        leds[NUM_LEDS-i] = lowStateColor;
-      }
-    }else{
-      for (int i = 0; i < NUM_LEDS; i++) {
-        leds[i] = lowStateColor;
-      }
+    bool onState = false;
+    int ledNum = (int) ( ((float) measurement) * ((float) NUM_LEDS_TILL_REPEAT));
+    for (int i = 0; i < NUM_LEDS; i++) {
+        if ((i-ledNum/4) % ledNum == 0) {
+          onState = ! onState; 
+        }
+      
+        leds[i] = onState ? highStateColor : lowStateColor;
+        
     }
+    
   }else if (music_mode == 2) {
     
-    ledNum = ((int) (sqrt(measurement/2) * NUM_LEDS));
-    
-    if (ledNum > 1) {
-      int i = 0;
-      for (; i < ledNum/2 && i < NUM_LEDS/2 ; i++) {
-        leds[NUM_LEDS/2+i] = highStateColor;
-        leds[NUM_LEDS/2-i] = highStateColor;
-      }
-  
-      for (; i < NUM_LEDS/2; i++) {
-        leds[NUM_LEDS/2+i] = lowStateColor;
-        leds[NUM_LEDS/2-i] = lowStateColor;
-      }
-    }else{
-      for (int i = 0; i < NUM_LEDS; i++) {
-        leds[i] = lowStateColor;
-      }
+   
+    int ledNum = (int) ( ((float) measurement) * ((float) NUM_LEDS_TILL_REPEAT));
+    bool onState = false;
+    for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = onState ? highStateColor : lowStateColor;
+        if ((-ledNum/2+i) % ledNum == 0) {
+          onState = ! onState;
+        }
     }
+    
   }else if (music_mode == 3) {
     for (int i = 0; i < NUM_LEDS; i++) {
       leds[i] = highStateColor;
