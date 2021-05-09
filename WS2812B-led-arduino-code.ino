@@ -8,9 +8,9 @@
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 
-#define LED_NUM 266
-#define END_OFFSET 45
-#define START_POS 25
+#define LED_NUM 60
+#define END_OFFSET 0
+#define START_POS 0
 
 #define NUM_LEDS (LED_NUM- END_OFFSET)
 
@@ -103,8 +103,8 @@ void setAll(CRGB color) {
 }
 
 
-//#define __REMOTE_ONE__
-#define __REMOTE_TWO__
+#define __REMOTE_ONE__
+//#define __REMOTE_TWO__
 
 
 
@@ -206,6 +206,19 @@ void loop() {
       case(64): // also OFF
         setAll(CRGB::Black);
         break;
+
+      case(6):
+        mode = MODE_FADE;
+        break;
+
+       case(13):
+        mode = MODE_MUSIC;
+        break;
+
+       case(7): //jump 3
+        mode = MODE_WAVE;
+        break;
+      
       case(0):
         //repeated button
         break;
@@ -336,10 +349,10 @@ void loop() {
   }else if (mode == MODE_MUSIC) {
     runMusicLeds(useMicrophone);
   }else if (mode == MODE_FADE) {
-    setAll(getColorShift(faderLoops));
+    setAll(getColorShift(faderLoops/10.0f));
   }else if (mode == MODE_WAVE) {
     const float k = 0.01;
-    const float w = 0.02f;
+    const float w = 0.005f;
     const float A = 2000;
     double fadeLoops = faderLoops;
     for (float i = START_POS; i < NUM_LEDS; i++) {
