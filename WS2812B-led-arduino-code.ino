@@ -10,7 +10,7 @@
 
 #define LED_NUM 150
 #define END_OFFSET 0
-#define START_POS 0
+#define START_POS 60
 
 #define NUM_LEDS (LED_NUM- END_OFFSET)
 
@@ -336,7 +336,7 @@ void loop() {
   }else if (mode == MODE_MUSIC) {
     runMusicLeds(useMicrophone);
   }else if (mode == MODE_FADE) {
-    setAll(getColorShift(faderLoops));
+    setAll(getColorShift(((float) faderLoops)/10.0f));
   }else if (mode == MODE_WAVE) {
     const float k = 0.01;
     const float w = 0.02f;

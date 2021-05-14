@@ -10,7 +10,7 @@ FASTLED_USING_NAMESPACE
 #define AUDIO_PORT 4
 #define MICROPHONE_PORT 4
 #define SAMPLE_SIZE 200 //400 //the number of audio samples to take
-#define LOOPS_TO_MES_FREQ_OVER 2;
+#define LOOPS_TO_MES_FREQ_OVER 3;
 #define SAMPLE_DELAY 0//0 // the delay between audio samples
 #define NUM_LEDS_TILL_REPEAT 70
 
@@ -109,8 +109,8 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
   data.averageMeasurement = (  data.averageMeasurement*data.totalMesurements + measurement)/(++data.totalMesurements);
 
   // reset after a while
-  data.virtualMaxMeasurement -= abs(data.virtualMaxMeasurement)/data.normalizationResetLoops;
-  data.virtualMinMeasurement += abs(data.virtualMinMeasurement)/data.normalizationResetLoops;
+  data.virtualMaxMeasurement -= abs(data.maxMeasurement)/data.normalizationResetLoops;
+  data.virtualMinMeasurement += abs(data.minMeasurement)/data.normalizationResetLoops;
   
   
 
@@ -144,7 +144,7 @@ void resetNormalizationData() {
   averageFrequencyNormalizationData = newAverageFrequencyNormalizationData;
   
   VrmsNormalizationData.normalizationResetLoops = 1000;
-  frequencyNormalizationData.normalizationResetLoops = 10000;
+  frequencyNormalizationData.normalizationResetLoops = 5000;
   averageFrequencyNormalizationData.normalizationResetLoops = 1000;
 }
 
@@ -240,13 +240,13 @@ void runMusicLeds(bool useMicrophone) {
     if ((Vrms > 0.75)) { 
         largeVrms++;
     }else{
-      if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
-        colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
+      if (largeVrms != 0 && largeVrms < 700/SAMPLE_SIZE) {
+        colorCycleIndx += ( 20.0f*pow(1.0f/(1.0f-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
       }
       largeVrms = 0;
     }
 
-    colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
+    colorCycleIndx += ( 20.0f*pow(1.0f/(1.0f-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
 
 
 
