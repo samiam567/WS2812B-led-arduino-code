@@ -38,6 +38,7 @@ struct NormalizationData averageFrequencyNormalizationData;
 int prevLEDNum = 0;
 
 int colorCycleIndx = 0;
+short colorCycleDirection = 1;
 
 int loopsWithoutAudioDetected = 0;
 
@@ -46,6 +47,8 @@ long loops = SAMPLE_SIZE;
 float avgSample = 100;
 
 int largeVrms = 0;
+
+
 
 
 bool modeSwitchButtonPressed = false;
@@ -139,6 +142,9 @@ void resetNormalizationData() {
   VrmsNormalizationData = newVrmsData;
   frequencyNormalizationData = newFreqData;
   averageFrequencyNormalizationData = newAverageFrequencyNormalizationData;
+  
+  VrmsNormalizationData.normalizationResetLoops = 1000;
+  frequencyNormalizationData.normalizationResetLoops = 10000;
   averageFrequencyNormalizationData.normalizationResetLoops = 1000;
 }
 
@@ -147,56 +153,10 @@ CRGB getColorShift(double pos, int brightness) {
   return CHSV(pos,255,brightness);
 }
 
-CRGB getColorShift2(double position, int brightnessI) {
-  float pos = 0;
-  if (position > 10000) {
-    (((long)position) % 10000);
-  }else{
-    pos = position;
-  }
-    
-  float brightness = brightnessI > 255 ? 255 : ((float) brightnessI);
-
-  int r = ( (int)  brightness/2 * ( sin(pos/200) + 1) );
-  int g = ( (int)  brightness/2 * ( sin(pos/170 + 0.27) + 1.0) );
-  int b = ( (int)  brightness/2 * ( sin(pos/300 + 3.2) + 1.0) );
-  
-  return CRGB(r,g,b);
-}
-
-CRGB getColorShift1(long position, int brightness) {
-    if (brightness > 255) brightness = 255;
-    
-    int colorStep = position % (2*brightness);
-    if (colorStep > brightness) colorStep = (2*brightness)-colorStep;
-
-    int greenStep = ((int) ( ((float) position) * 1.3f)) % (2*brightness);
-    if (greenStep > brightness) greenStep = (2*brightness)-greenStep;
-    
-    int r = colorStep;  // Redness starts at zero and goes up to full
-    int b = brightness-colorStep;  // Blue starts at full and goes down to zero
-    int g = greenStep;              // No green needed to go from blue to red
-
-    return CRGB(r,g,b);
-}
-
 CRGB getColorShift(double pos) {
     return getColorShift(pos,255);
 }
 
-CRGB getColorShiftOld(int position) {
-    int colorStep = position % 510;
-    if (colorStep > 255) colorStep = 510-colorStep;
-
-    int greenStep = ((int) ( ((float) position) * 1.3f)) % 510;
-    if (greenStep > 255) greenStep = 510-greenStep;
-    
-    int r = colorStep;  // Redness starts at zero and goes up to full
-    int b = 255-colorStep;  // Blue starts at full and goes down to zero
-    int g = greenStep;              // No green needed to go from blue to red
-
-    return CRGB(r,g,b);
-}
 
 int factorial(int x) {
   int result = x;
@@ -252,39 +212,57 @@ void runMusicLeds(bool useMicrophone) {
   VrmsNormalizationData = normalize(Vrms,VrmsNormalizationData);
   Vrms = VrmsNormalizationData.lastNormalizedMeasurement;
 
-   
 
-  //set brightness with Vrms
-  
-   
-   
-   
-  
 
-   
-    if (colorCycleIndx > 255 || colorCycleIndx < 0) colorCycleIndx = 0;
+
+  /* 
     // change color with Vrms
     if ((Vrms > 0.5)) {
-      colorCycleIndx += 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
+      colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
       if (Vrms > 0.75){
-        colorCycleIndx += 30*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
+        colorCycleIndx += ( 30*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
       }else{      
         largeVrms++;
       }
       
     }else{
       if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
-        colorCycleIndx += 50*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
+        colorCycleIndx += ( 50*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
       }else{
-        colorCycleIndx += 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE;
+        colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
       }
   
       largeVrms = 0;
-      
+    }
+*/
+
+    // change color with Vrms
+    if ((Vrms > 0.75)) { 
+        largeVrms++;
+    }else{
+      if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
+        colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
+      }
+      largeVrms = 0;
     }
 
+    colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
 
 
+
+
+    
+    //make sure colorCycle doesn't go our of bounds
+    if (colorCycleIndx > 359) {
+      colorCycleIndx = 359;
+      colorCycleDirection = -1;
+      
+    }else if ( colorCycleIndx < 0) {
+      colorCycleIndx = 0;
+      colorCycleDirection = 1;
+    }
+
+  //set brightness with Vrms
   if (loops % 3 == 0) {
     FastLED.setBrightness(((Vrms)/1.3333f+0.25)*brightness);
   }else if (loops > 100000){
