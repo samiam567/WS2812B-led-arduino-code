@@ -9,10 +9,10 @@ FASTLED_USING_NAMESPACE
 #define DATA_PIN 10
 #define AUDIO_PORT 4
 #define MICROPHONE_PORT 4
-#define SAMPLE_SIZE 100 //400 //the number of audio samples to take
-#define LOOPS_TO_MES_FREQ_OVER 4;
+#define SAMPLE_SIZE 200 //400 //the number of audio samples to take
+#define LOOPS_TO_MES_FREQ_OVER 2;
 #define SAMPLE_DELAY 0//0 // the delay between audio samples
-#define NUM_LEDS_TILL_REPEAT 50
+#define NUM_LEDS_TILL_REPEAT 70
 
 
 
@@ -22,9 +22,11 @@ struct NormalizationData {
   float lastNormalizedMeasurement = 0;
   float minMeasurement = 10000;
   float maxMeasurement = 0;
+  float virtualMinMeasurement = 10000; // compared against for finding max and min but not used for normalization
+  float virtualMaxMeasurement = 0; // compared against for finding max and min but not used for normalization
   float averageMeasurement = 0;
   int totalMesurements = 0;
-  
+  int normalizationResetLoops = 10000;
 };
 
 struct NormalizationData frequencyNormalizationData;
@@ -60,59 +62,6 @@ void musicLEDSsetup() {
   pinMode(AUDIO_PORT,INPUT);
 }
 
-
-float getSignalVrms(int input_port, int sample_size) {
-  // read RMS of audioStream
- 
-  
-  double Vrms = 0;
-  float numNonZero = sample_size;
-  for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
-    double sample = analogRead(input_port);
-
-    //Vrms += sample > 0 ? sample*sample : Vrms/(sampleNum+1);
-    
-    if (! sample == 0) {
-      Vrms += sample*sample;
-    }else {
-      numNonZero-= 0.8;
-    }
-
-    delay(SAMPLE_DELAY);
-  }
-
-  Vrms /= numNonZero;
-
-  return Vrms;
-}
-
-
-float getSignalFrequency(int input_port, float triggerLevel, int sample_size) {
-  
-  double frequency = 0;
-
-  boolean belowTrigger = true;
-
-  for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
-    double sample = analogRead(input_port);
-
-    avgSample = (20*avgSample + sample)/21;
-    
-    if (sample > triggerLevel) {
-
-      if (belowTrigger) frequency += 1;  //rising edge triggering
-
-      belowTrigger = false;
-    }else {
-      belowTrigger = true;
-    }
-
-    
-    delay(SAMPLE_DELAY);
-  }
-  return frequency;
-}
-
 float freqVrms[2];
 float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_size) {
   
@@ -125,8 +74,8 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
   double sample = 0;
   for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
     sample = analogRead(input_port);
-  
-    if (sample > 300) {
+    
+    if (sample > 25) {
        if (belowTrigger) frequency++;  //rising edge triggering
        belowTrigger = false;
     }else {
@@ -157,8 +106,8 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
   data.averageMeasurement = (  data.averageMeasurement*data.totalMesurements + measurement)/(++data.totalMesurements);
 
   // reset after a while
-  data.maxMeasurement -= abs(data.maxMeasurement)/10000;
-  data.minMeasurement += abs(data.minMeasurement)/10000;
+  data.virtualMaxMeasurement -= abs(data.virtualMaxMeasurement)/data.normalizationResetLoops;
+  data.virtualMinMeasurement += abs(data.virtualMinMeasurement)/data.normalizationResetLoops;
   
   
 
@@ -167,10 +116,16 @@ struct NormalizationData normalize(float measurement,struct NormalizationData da
 
   data.lastNormalizedMeasurement = data.lastNormalizedMeasurement < 0 ? 0 : data.lastNormalizedMeasurement > 1 ? 1 : data.lastNormalizedMeasurement;
   
-  if (measurement > data.maxMeasurement && measurement < 1000000) data.maxMeasurement = measurement;
+  if (measurement > data.virtualMaxMeasurement && measurement < 1000000) {
+    data.maxMeasurement = measurement;
+    data.virtualMaxMeasurement = measurement;
+  }
   
 
-  if (measurement < data.minMeasurement ) data.minMeasurement = measurement;
+  if (measurement < data.virtualMinMeasurement ) {
+    data.minMeasurement = measurement;
+    data.virtualMinMeasurement = measurement;
+  }
   
   return data;
 
@@ -184,6 +139,7 @@ void resetNormalizationData() {
   VrmsNormalizationData = newVrmsData;
   frequencyNormalizationData = newFreqData;
   averageFrequencyNormalizationData = newAverageFrequencyNormalizationData;
+  averageFrequencyNormalizationData.normalizationResetLoops = 1000;
 }
 
 CRGB getColorShift(double pos, int brightness) {
@@ -275,8 +231,7 @@ void runMusicLeds(bool useMicrophone) {
 
 
 
-
- 
+  
   // if there is no music playing switch to rainbow
 
     if ( Vrms < 15000 ){
@@ -331,13 +286,13 @@ void runMusicLeds(bool useMicrophone) {
 
 
   if (loops % 3 == 0) {
-    FastLED.setBrightness((1.0+Vrms)/2.0*brightness);
+    FastLED.setBrightness(((Vrms)/1.3333f+0.25)*brightness);
   }else if (loops > 100000){
       loops = 0;
   }
   
   highStateColor = getColorShift(colorCycleIndx);
-  lowStateColor = getColorShift(colorCycleIndx +700);
+  lowStateColor = getColorShift(colorCycleIndx +700,150);
   loops++;
 
   
@@ -360,8 +315,6 @@ void runMusicLeds(bool useMicrophone) {
   float measurement = averageFrequencyNormalizationData.lastNormalizedMeasurement;
 
   int ledNum = ((int) (measurement * NUM_LEDS));
-
-
   
   bool mesVrms = false;
   if (mesVrms) ledNum = measurement == 0 ? prevLEDNum * 1 : ledNum*0.6 + prevLEDNum*0.4;
@@ -373,15 +326,16 @@ void runMusicLeds(bool useMicrophone) {
     setAll(CRGB::Black);
    
   }else if (music_mode == 1) {
-    bool onState = false;
-    int ledNum = (int) ( ((float) measurement) * ((float) NUM_LEDS_TILL_REPEAT));
+    
+    //int ledNum = (int) ( ((float) measurement) * ((float) NUM_LEDS_TILL_REPEAT));
+    float triangleWavePos = 0;
     for (int i = 0; i < NUM_LEDS; i++) {
-        if ((i-ledNum/4) % ledNum == 0) {
-          onState = ! onState; 
+        leds[i] = (measurement > triangleWavePos) ? highStateColor : lowStateColor;
+        if ( (i % NUM_LEDS_TILL_REPEAT) < (NUM_LEDS_TILL_REPEAT/2) ) {
+          triangleWavePos += 1.0f/(NUM_LEDS_TILL_REPEAT/2.0f);
+        }else{
+          triangleWavePos -= 1.0f/(NUM_LEDS_TILL_REPEAT/2.0f);
         }
-      
-        leds[i] = onState ? highStateColor : lowStateColor;
-        
     }
     
   }else if (music_mode == 2) {

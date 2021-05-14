@@ -8,9 +8,9 @@
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 
-#define LED_NUM 266
-#define END_OFFSET 45
-#define START_POS 25
+#define LED_NUM 150
+#define END_OFFSET 0
+#define START_POS 0
 
 #define NUM_LEDS (LED_NUM- END_OFFSET)
 
@@ -119,7 +119,7 @@ void setAll(CRGB color) {
 #define MODE_WAVE 5
 
 int mode = MODE_REMOTE;
-int music_mode = 2;
+int music_mode = 1;
 
 bool useMicrophone = false;
 
