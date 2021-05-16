@@ -10,7 +10,7 @@
 
 #define LED_NUM 150
 #define END_OFFSET 0
-#define START_POS 60
+#define START_POS 0//60
 
 #define NUM_LEDS (LED_NUM- END_OFFSET)
 

@@ -190,7 +190,7 @@ void runMusicLeds(bool useMicrophone) {
   float Vrms = freqAndRms[1];
 
 
-
+  
   
   // if there is no music playing switch to rainbow
 
@@ -212,29 +212,6 @@ void runMusicLeds(bool useMicrophone) {
   VrmsNormalizationData = normalize(Vrms,VrmsNormalizationData);
   Vrms = VrmsNormalizationData.lastNormalizedMeasurement;
 
-
-
-
-  /* 
-    // change color with Vrms
-    if ((Vrms > 0.5)) {
-      colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
-      if (Vrms > 0.75){
-        colorCycleIndx += ( 30*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
-      }else{      
-        largeVrms++;
-      }
-      
-    }else{
-      if (largeVrms != 0 && largeVrms < 500/SAMPLE_SIZE) {
-        colorCycleIndx += ( 50*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
-      }else{
-        colorCycleIndx += ( 20*pow(1/(1-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
-      }
-  
-      largeVrms = 0;
-    }
-*/
 
     // change color with Vrms
     if ((Vrms > 0.75)) { 
@@ -281,6 +258,8 @@ void runMusicLeds(bool useMicrophone) {
   
   frequencyNormalizationData.totalMesurements = LOOPS_TO_MES_FREQ_OVER;
 
+
+  
   
   //if freq is zero don't change normalization
   if (frequency != 0) {
@@ -293,6 +272,12 @@ void runMusicLeds(bool useMicrophone) {
   float measurement = averageFrequencyNormalizationData.lastNormalizedMeasurement;
 
   int ledNum = ((int) (measurement * NUM_LEDS));
+
+  Serial.print(Vrms);
+  Serial.print(",");
+  Serial.print(frequencyNormalizationData.lastNormalizedMeasurement);
+  Serial.print(",");
+  Serial.println(measurement);
   
   bool mesVrms = false;
   if (mesVrms) ledNum = measurement == 0 ? prevLEDNum * 1 : ledNum*0.6 + prevLEDNum*0.4;
