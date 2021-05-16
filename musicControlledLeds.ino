@@ -216,8 +216,9 @@ void runMusicLeds(bool useMicrophone) {
     // change color with Vrms
     if ((Vrms > 0.75)) { 
         largeVrms++;
+        colorCycleIndx += ( 5.0f*pow(1.0f/(1.0f-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
     }else{
-      if (largeVrms != 0 && largeVrms < 700/SAMPLE_SIZE) {
+      if (largeVrms != 0 && largeVrms < 700.0f/SAMPLE_SIZE) {
         colorCycleIndx += ( 20.0f*pow(1.0f/(1.0f-Vrms),2)/SAMPLE_SIZE ) * colorCycleDirection;
       }
       largeVrms = 0;
@@ -273,11 +274,13 @@ void runMusicLeds(bool useMicrophone) {
 
   int ledNum = ((int) (measurement * NUM_LEDS));
 
+  /*
   Serial.print(Vrms);
   Serial.print(",");
   Serial.print(frequencyNormalizationData.lastNormalizedMeasurement);
   Serial.print(",");
   Serial.println(measurement);
+  */
   
   bool mesVrms = false;
   if (mesVrms) ledNum = measurement == 0 ? prevLEDNum * 1 : ledNum*0.6 + prevLEDNum*0.4;
