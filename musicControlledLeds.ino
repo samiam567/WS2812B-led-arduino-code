@@ -63,9 +63,12 @@ void musicLEDSsetup() {
 
 
   pinMode(AUDIO_PORT,INPUT);
+  pinMode(MICROPHONE_PORT,INPUT);
 }
 
+
 float freqVrms[2];
+
 float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_size) {
   
   float frequency = 0;
@@ -76,8 +79,9 @@ float* getSignalFrequencyAndRms(int input_port, float triggerLevel, int sample_s
 
   double sample = 0;
   for (int sampleNum = 0; sampleNum < sample_size; sampleNum++) {
-    sample = analogRead(input_port);
-    
+    sample = analogRead(MICROPHONE_PORT);
+
+  
     if (sample > 25) {
        if (belowTrigger) frequency++;  //rising edge triggering
        belowTrigger = false;
