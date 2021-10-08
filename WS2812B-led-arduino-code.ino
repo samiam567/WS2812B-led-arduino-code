@@ -8,7 +8,7 @@
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 
-#define LED_NUM 150
+#define LED_NUM 262
 #define END_OFFSET 0
 #define START_POS 0//60
 

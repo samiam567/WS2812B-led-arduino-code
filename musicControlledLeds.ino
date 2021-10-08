@@ -245,7 +245,7 @@ void runMusicLeds(bool useMicrophone) {
     }
 
   //set brightness with Vrms
-  if (loops % 3 == 0) {
+  if (loops % 2 == 0) {
     FastLED.setBrightness(((Vrms)/1.3333f+0.25)*brightness);
   }else if (loops > 100000){
       loops = 0;
