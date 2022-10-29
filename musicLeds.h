@@ -18,7 +18,6 @@ void runMusicLeds();
 
 void resetNormalizationData();
 
-CRGB getColorShift( double position);
-
+CRGB getColorShift(double position);
 
 #endif
