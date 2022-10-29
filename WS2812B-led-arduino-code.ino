@@ -18,7 +18,7 @@
 CRGB leds[LED_NUM];
 decode_results results; // create a results object of the decode_results class
 
-int brightness = 60; // max 94
+int brightness = 94; // max 94
 
 unsigned long key_value = 0; // variable to store the pressed key value
 unsigned long faderLoops = 0;
