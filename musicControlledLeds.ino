@@ -5,7 +5,7 @@ FASTLED_USING_NAMESPACE
 #define DATA_PIN 10 // output port
 #define AUDIO_PORT 4 // aux audio in
 #define MICROPHONE_PORT 4 // microphone
-#define SAMPLE_SIZE 200 // 400 //the number of audio samples to take
+#define SAMPLE_SIZE 100 // 400 //the number of audio samples to take
 #define LOOPS_TO_MES_FREQ_OVER 3;
 #define SAMPLE_DELAY 0 // 0 // the delay between audio samples
 #define NUM_LEDS_TILL_REPEAT 70
