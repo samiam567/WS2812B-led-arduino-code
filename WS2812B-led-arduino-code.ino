@@ -106,6 +106,8 @@ void setAll(CRGB color)
 
 //#define __REMOTE_ONE__
 #define __REMOTE_TWO__
+//#define __REMOTE_THREE__
+
 
 // MODE:
 #define MODE_REMOTE 0
@@ -116,7 +118,7 @@ void setAll(CRGB color)
 #define MODE_OFF 5
 #define MAX_MODE 5
 
-int mode = MODE_FADE;
+int mode = MODE_MUSIC;
 int music_mode = 1;
 
 bool useMicrophone = false;

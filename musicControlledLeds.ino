@@ -2,9 +2,9 @@
 
 FASTLED_USING_NAMESPACE
 
-#define DATA_PIN 10
-#define AUDIO_PORT 4
-#define MICROPHONE_PORT 4
+#define DATA_PIN 10 // output port
+#define AUDIO_PORT 4 // aux audio in
+#define MICROPHONE_PORT 4 // microphone
 #define SAMPLE_SIZE 200 // 400 //the number of audio samples to take
 #define LOOPS_TO_MES_FREQ_OVER 3;
 #define SAMPLE_DELAY 0 // 0 // the delay between audio samples
@@ -214,7 +214,7 @@ void runMusicLeds(bool useMicrophone)
   Vrms = VrmsNormalizationData.lastNormalizedMeasurement;
 
   // change color with Vrms
-  if ((Vrms > 0.75))
+  if ((Vrms > 0.6))
   {
     largeVrms++;
     colorCycleIndx += (5.0f * pow(1.0f / (1.0f - Vrms), 2) / SAMPLE_SIZE) * colorCycleDirection;
