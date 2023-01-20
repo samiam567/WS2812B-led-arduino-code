@@ -337,6 +337,14 @@ void loop()
       Serial.print("Setting brightness: ");
       Serial.println(brightness);
       break;
+    default:
+      music_mode++;
+      if (music_mode > MAX_MUSIC_MODE)
+      {
+        music_mode = 0;
+      }
+      mode = MODE_MUSIC;
+      break;
 
 #endif // end Alec's remote config
     }
